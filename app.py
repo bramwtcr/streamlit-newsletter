@@ -337,19 +337,52 @@ def main():
         return
 
     # Header: use a custom HTML container to apply the aviation-themed styling
+    # Compute values outside of the f-string to avoid backslash escapes
+    header_title = content.get("title", "Bram's AI Newsletter")
+    header_subtitle = content.get("subtitle", "")
+    header_period = content.get("period", "")
     st.markdown(
         f"""
         <div class="main-header">
-            <h1>{content.get('title', 'Bram\'s AI Newsletter')}</h1>
-            <h3>{content.get('subtitle', '')}</h3>
-            <p>{content.get('period', '')}</p>
+            <h1>{header_title}</h1>
+            <h3>{header_subtitle}</h3>
+            <p>{header_period}</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # Audio players
-    display_audio(content.get("audio_files", {}), base_dir=content.get("_base_dir"))
+    # Listen section: Display two podcast columns for Executive Summary and Deep Dive.
+    # Prepare audio files: filter out the 'News Update' entry and keep the remaining.
+    audio_map = content.get("audio_files", {})
+    # Remove 'News Update' (case-insensitive) and preserve order
+    filtered_audio = [(k, v) for k, v in audio_map.items() if k.lower() != "news update"]
+    if filtered_audio:
+        # Only take up to the first two entries for Executive Summary and Deep Dive
+        filtered_audio = filtered_audio[:2]
+        st.markdown('<h2>🎧 Listen</h2>', unsafe_allow_html=True)
+        cols = st.columns(len(filtered_audio))
+        for (label, filename), col in zip(filtered_audio, cols):
+            with col:
+                # Show podcast box with title
+                st.markdown(
+                    f'<div class="podcast-box"><div class="podcast-title">{label}</div>',
+                    unsafe_allow_html=True,
+                )
+                # Resolve audio file path relative to the JSON's base directory
+                file_path = filename
+                base_dir = content.get("_base_dir")
+                if base_dir and not os.path.isabs(filename):
+                    file_path = os.path.join(base_dir, filename)
+                # Check if file exists and play audio
+                if os.path.isfile(file_path):
+                    ext = os.path.splitext(file_path)[1].lower()
+                    mime = "audio/mp3" if ext == ".mp3" else "audio/mp4"
+                    with open(file_path, "rb") as af:
+                        st.audio(af.read(), format=mime)
+                else:
+                    st.warning(f"Audio file '{filename}' not found. Please upload it.")
+                st.markdown('</div>', unsafe_allow_html=True)
 
     # Initialize feedback storage in session state
     if "feedback" not in st.session_state:
