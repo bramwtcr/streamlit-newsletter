@@ -86,40 +86,53 @@ def load_content(file_path: str | None = None):
 def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
     """
     Initialize a SQLite database and return the connection. Creates the feedback
-    table if it does not already exist. This database persists on the local file
-    system, so feedback remains available across sessions (as long as the file
-    system persists, e.g., when running locally or on a server with persistent
-    storage).
+    table if it does not already exist. The table includes an additional
+    `edition` column so that feedback can be associated with a particular
+    newsletter edition. If the table exists without this column, it will
+    be added via an ALTER TABLE statement. This database persists on the
+    local file system, so feedback remains available across sessions (as long
+    as the file system persists).
     """
     conn = sqlite3.connect(db_path, check_same_thread=False)
+    # Create table if not exists with edition column
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             item_title TEXT NOT NULL,
             comment TEXT NOT NULL,
+            edition TEXT,
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
     conn.commit()
+    # Ensure edition column exists (for backward compatibility)
+    try:
+        conn.execute("ALTER TABLE feedback ADD COLUMN edition TEXT")
+        conn.commit()
+    except Exception:
+        # Column already exists or other issue; ignore
+        pass
     return conn
 
 
-def save_feedback(item_title: str, feedback: str, conn: sqlite3.Connection):
+def save_feedback(item_title: str, feedback: str, edition: str, conn: sqlite3.Connection):
     """
     Persist a feedback entry into the SQLite database. Empty comments are ignored.
 
     Parameters:
         item_title: The title of the item receiving feedback.
         feedback: The comment provided by the user.
+        edition: Identifier for the newsletter edition (e.g., 'Week 44').
         conn: An open SQLite connection.
     """
     if not feedback.strip():
         return
+    # Insert feedback with edition value
     conn.execute(
-        "INSERT INTO feedback (item_title, comment) VALUES (?, ?)",
-        (item_title, feedback.strip()),
+        "INSERT INTO feedback (item_title, comment, edition) VALUES (?, ?, ?)",
+        (item_title, feedback.strip(), edition),
     )
     conn.commit()
 
@@ -157,6 +170,7 @@ def main():
     # Determine available content versions and allow the user to choose
     versions = get_available_versions()
     selected_content_file = None
+    selected_label: str | None = None
     if versions:
         # Build a list of display names using the parent folder of each JSON file
         version_options: list[tuple[str, str]] = []
@@ -221,7 +235,8 @@ def main():
                 user_feedback = st.text_area("Your feedback:", key=feedback_key)
                 submitted = st.form_submit_button("Submit Feedback")
                 if submitted:
-                    save_feedback(title, user_feedback, conn)
+                    # Pass selected edition label when saving feedback
+                    save_feedback(title, user_feedback, selected_label or "unknown", conn)
                     st.session_state.feedback[title] = user_feedback
                     st.success("Thank you for your feedback!")
 
@@ -242,25 +257,30 @@ def main():
                 user_feedback = st.text_area("Your feedback:", key=feedback_key)
                 submitted = st.form_submit_button("Submit Feedback")
                 if submitted:
-                    save_feedback(title, user_feedback, conn)
+                    save_feedback(title, user_feedback, selected_label or "unknown", conn)
                     st.session_state.feedback[title] = user_feedback
                     st.success("Thank you for your feedback!")
 
-    # Display collected feedback (optional)
+    # Display collected feedback for the current edition
     st.markdown("---")
     st.header("Collected Feedback")
-    # Retrieve feedback from the database and display it
+    # Retrieve feedback from the database for the selected edition and display it
     try:
-        rows = conn.execute(
-            "SELECT item_title, comment, submitted_at FROM feedback ORDER BY submitted_at DESC"
-        ).fetchall()
+        if selected_label:
+            rows = conn.execute(
+                "SELECT item_title, comment, submitted_at FROM feedback WHERE edition = ? ORDER BY submitted_at DESC",
+                (selected_label,),
+            ).fetchall()
+        else:
+            # No edition selected; return empty list
+            rows = []
     except Exception:
         rows = []
 
     if rows:
         for item_title, comment, ts in rows:
             st.markdown(f"**{item_title}** ({ts}): {comment}")
-        # Provide a download button for all feedback as CSV
+        # Provide a download button for feedback of this edition as CSV
         df_feedback = pd.DataFrame(rows, columns=["Item", "Comment", "Submitted At"])
         csv_data = df_feedback.to_csv(index=False)
         st.download_button(
