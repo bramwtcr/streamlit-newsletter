@@ -290,25 +290,21 @@ def main():
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = 0
             # 5-star rating system using radio buttons for compact layout
-            star_labels = [
-                "☆☆☆☆☆",
-                "★☆☆☆☆",
-                "★★☆☆☆",
-                "★★★☆☆",
-                "★★★★☆",
-                "★★★★★",
-            ]
-            current_rating = st.session_state.get(rating_key, 0)
-            selected_label = st.radio(
-                label="",
-                options=star_labels,
-                index=current_rating,
-                horizontal=True,
-                key=f"radio_top_{idx}",
-                label_visibility="collapsed",
-            )
-            rating = star_labels.index(selected_label)
-            st.session_state[rating_key] = rating
+            # Two-option rating: thumbs up / thumbs down with toggle functionality
+            if rating_key not in st.session_state:
+                st.session_state[rating_key] = ""
+            # Determine labels based on selection; selected icons are colored
+            current = st.session_state[rating_key]
+            up_label = "🟢👍" if current == "👍" else "👍"
+            down_label = "🔴👎" if current == "👎" else "👎"
+            up_col, down_col = st.columns(2)
+            with up_col:
+                if st.button(up_label, key=f"up_btn_top_{idx}"):
+                    st.session_state[rating_key] = "" if current == "👍" else "👍"
+            with down_col:
+                if st.button(down_label, key=f"down_btn_top_{idx}"):
+                    st.session_state[rating_key] = "" if current == "👎" else "👎"
+            rating = st.session_state[rating_key]
             # Arrange feedback input and submit button horizontally
             input_col, button_col = st.columns([4, 1])
             with input_col:
@@ -343,25 +339,20 @@ def main():
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = 0
             # 5-star rating system for regional sections using radio
-            star_labels = [
-                "☆☆☆☆☆",
-                "★☆☆☆☆",
-                "★★☆☆☆",
-                "★★★☆☆",
-                "★★★★☆",
-                "★★★★★",
-            ]
-            current_rating = st.session_state.get(rating_key, 0)
-            selected_label = st.radio(
-                label="",
-                options=star_labels,
-                index=current_rating,
-                horizontal=True,
-                key=f"radio_region_{idx}",
-                label_visibility="collapsed",
-            )
-            rating = star_labels.index(selected_label)
-            st.session_state[rating_key] = rating
+            # Two-option rating for regional sections
+            if rating_key not in st.session_state:
+                st.session_state[rating_key] = ""
+            current = st.session_state[rating_key]
+            up_label = "🟢👍" if current == "👍" else "👍"
+            down_label = "🔴👎" if current == "👎" else "👎"
+            up_col, down_col = st.columns(2)
+            with up_col:
+                if st.button(up_label, key=f"up_btn_region_{idx}"):
+                    st.session_state[rating_key] = "" if current == "👍" else "👍"
+            with down_col:
+                if st.button(down_label, key=f"down_btn_region_{idx}"):
+                    st.session_state[rating_key] = "" if current == "👎" else "👎"
+            rating = st.session_state[rating_key]
             input_col, button_col = st.columns([4, 1])
             with input_col:
                 user_feedback = st.text_input(
