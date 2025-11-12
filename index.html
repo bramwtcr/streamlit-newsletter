@@ -55,7 +55,8 @@
     }
     /* Styles for the audio players when displayed at the top of the page */
     .audio-section {
-      background-color: #eef3f7;
+      /* Light banner background to differentiate from main content */
+      background-color: #e6f0fa;
       padding: 20px;
       border-bottom: 1px solid #ccc;
     }
@@ -84,6 +85,42 @@
       padding: 10px 0;
       margin-top: 40px;
     }
+    /* Dark mode styles */
+    body.dark-mode {
+      background-color: #121212;
+      color: #e0e0e0;
+    }
+    body.dark-mode header,
+    body.dark-mode footer {
+      background-color: #222;
+    }
+    body.dark-mode main {
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+    }
+    body.dark-mode a {
+      color: #90caf9;
+    }
+    body.dark-mode .audio-section {
+      background-color: #2a2a2a;
+    }
+    /* Dark mode button */
+    #darkModeToggle {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      background: transparent;
+      border: 2px solid #ffffff;
+      color: #ffffff;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    body.dark-mode #darkModeToggle {
+      border-color: #90caf9;
+      color: #90caf9;
+    }
     a {
       color: #014f86;
       text-decoration: none;
@@ -100,29 +137,32 @@
     <!-- Subheading describing the edition -->
     <h2>Weekly Executive Aviation Briefing</h2>
     <p>For the period: 24 October 2025 to 3 November 2025</p>
+   <!-- Dark mode toggle button -->
+   <button id="darkModeToggle">Dark Mode</button>
   </header>
   <main>
     <!-- Audio players displayed at the top of the page -->
     <section class="audio-section" id="audio">
       <div class="audio-container">
         <div class="audio-item">
-          <h3>3‑Minute Update</h3>
+          <h3>2‑Minute Summary</h3>
           <audio controls>
-            <source src="3min-update.mp3" type="audio/mpeg">
+            <!-- note: spaces in file names are encoded as %20 for browser compatibility -->
+            <source src="2%20min%20summary.m4a" type="audio/mp4">
             Your browser does not support the audio element.
           </audio>
         </div>
         <div class="audio-item">
-          <h3>6‑Minute Digest</h3>
+          <h3>6‑Minute Update</h3>
           <audio controls>
-            <source src="6min-digest.mp3" type="audio/mpeg">
+            <source src="6%20min%20update.m4a" type="audio/mp4">
             Your browser does not support the audio element.
           </audio>
         </div>
         <div class="audio-item">
-          <h3>15‑Minute Deep Dive</h3>
+          <h3>20‑Minute Deep Dive</h3>
           <audio controls>
-            <source src="15min-deep-dive.mp3" type="audio/mpeg">
+            <source src="20%20min%20deep%20dive.m4a" type="audio/mp4">
             Your browser does not support the audio element.
           </audio>
         </div>
@@ -305,5 +345,18 @@
   <footer>
     <p>&copy; 2025 Executive Aviation Briefing</p>
   </footer>
+  <!-- Dark mode toggle script -->
+  <script>
+    // Dark mode toggle functionality
+    const toggleBtn = document.getElementById('darkModeToggle');
+    toggleBtn.addEventListener('click', function() {
+      document.body.classList.toggle('dark-mode');
+      if (document.body.classList.contains('dark-mode')) {
+        this.textContent = 'Light Mode';
+      } else {
+        this.textContent = 'Dark Mode';
+      }
+    });
+  </script>
 </body>
 </html>
