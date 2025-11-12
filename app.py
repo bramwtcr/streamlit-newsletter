@@ -218,9 +218,87 @@ def display_audio(audio_files: dict, base_dir: str | None = None):
 
 def main():
     # Configure page
-    st.set_page_config(page_title="Bram's AI Newsletter", layout="wide")
+    st.set_page_config(page_title="Aviation Weekly Briefing", layout="wide")
 
-    # NOTE: Custom CSS injection has been removed to keep the app lightweight.
+    # Inject global CSS styles for a clean, modern look. This CSS defines a
+    # centered content container, updated typography, a styled header bar,
+    # section titles, podcast boxes, and paragraph formatting. These styles
+    # follow the design provided by the user. The use of `unsafe_allow_html`
+    # enables the custom CSS to take effect across the page.
+    st.markdown(
+        """
+        <style>
+            /* General body style */
+            .block-container {
+                max-width: 900px;
+                margin: 0 auto;
+                padding-top: 2rem;
+            }
+
+            /* Clean, modern typography */
+            html, body, [class*="css"] {
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                line-height: 1.6;
+                color: #222;
+            }
+
+            /* Header bar styling */
+            .main-header {
+                background-color: #004C8C;  /* Deep aviation blue */
+                color: white;
+                text-align: center;
+                padding: 3rem 1rem;
+                border-radius: 6px;
+            }
+
+            .main-header h1 {
+                font-size: 2.5rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .main-header h3 {
+                font-size: 1.2rem;
+                font-weight: normal;
+                color: #dbe8ff;
+            }
+
+            /* Section titles */
+            h2 {
+                color: #004C8C;
+                border-bottom: 2px solid #004C8C;
+                padding-bottom: 0.3rem;
+                margin-top: 2.5rem;
+            }
+
+            /* Podcast box styling */
+            .podcast-box {
+                background-color: #f5f8fc;
+                border: 1px solid #cfd8e0;
+                border-radius: 6px;
+                padding: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .podcast-title {
+                font-weight: 600;
+                font-size: 1.1rem;
+                color: #004C8C;
+                margin-bottom: 0.5rem;
+            }
+
+            /* Article text */
+            p, li {
+                font-size: 1.05rem;
+                text-align: justify;
+            }
+
+            ol {
+                padding-left: 1.5rem;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     # Determine available content versions and allow the user to choose
     versions = get_available_versions()
     selected_content_file = None
@@ -258,10 +336,17 @@ def main():
         st.write("json file with articles missing")
         return
 
-    # Header
-    st.title(content.get("title", "Bram's AI Newsletter"))
-    st.subheader(content.get("subtitle", ""))
-    st.write(f"For the period: {content.get('period', '')}")
+    # Header: use a custom HTML container to apply the aviation-themed styling
+    st.markdown(
+        f"""
+        <div class="main-header">
+            <h1>{content.get('title', 'Bram\'s AI Newsletter')}</h1>
+            <h3>{content.get('subtitle', '')}</h3>
+            <p>{content.get('period', '')}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     # Audio players
     display_audio(content.get("audio_files", {}), base_dir=content.get("_base_dir"))
