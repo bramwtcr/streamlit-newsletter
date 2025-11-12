@@ -225,9 +225,9 @@ def main():
         # Build a list of display names using the parent folder of each JSON file
         version_options: list[tuple[str, str]] = []
         for path in versions:
-            # Display name uses the immediate directory name (e.g., 'Week 44')
-            dir_name = os.path.basename(os.path.dirname(path)) or os.path.basename(path)
-            version_options.append((dir_name, path))
+            # Display name uses the base filename without extension (e.g., 'Week 44 Y25')
+            base = os.path.splitext(os.path.basename(path))[0]
+            version_options.append((base, path))
         # Sidebar selection for available versions
         st.sidebar.markdown("### Previous Editions")
         labels = [disp for disp, _ in version_options]
@@ -282,8 +282,13 @@ def main():
         # Use a wider article column and narrower interaction column for compact layout
         article_col, interact_col = st.columns([4, 2])
         with article_col:
-            # Render title and description
-            st.markdown(f"### {title}")
+            # Render title with link icon if url_source exists, and description
+            url = item.get("url_source")
+            title_md = f"### {title}"
+            if url:
+                title_md += f" [🔗]({url})"
+            st.markdown(title_md)
+            # Render description without additional link conversion (format_description handles general cases)
             st.markdown(formatted_desc)
         with interact_col:
             # Initialize rating state for this item if not present (0 = no rating)
@@ -294,11 +299,10 @@ def main():
             # Two-option rating: thumbs up / thumbs down with toggle functionality
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = ""
-            # Determine labels based on selection; selected icons are colored
             current = st.session_state[rating_key]
             up_label = "🟢👍" if current == "👍" else "👍"
             down_label = "🔴👎" if current == "👎" else "👎"
-            up_col, down_col = st.columns(2)
+            up_col, down_col = st.columns([1, 1])
             with up_col:
                 if st.button(up_label, key=f"up_btn_top_{idx}"):
                     st.session_state[rating_key] = "" if current == "👍" else "👍"
@@ -332,7 +336,11 @@ def main():
         # Two columns: left for region text, right for rating and feedback
         article_col, interact_col = st.columns([4, 2])
         with article_col:
-            st.markdown(f"### {title}")
+            url = region.get("url_source")
+            title_md = f"### {title}"
+            if url:
+                title_md += f" [🔗]({url})"
+            st.markdown(title_md)
             st.markdown(formatted_desc)
         with interact_col:
             # Initialize rating state for this region if not present (0 = no rating)
