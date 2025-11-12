@@ -36,7 +36,10 @@ def format_description(description: str) -> str:
         citation_target = citation_target.lstrip("(").rstrip(")")
         # Create link using 'Link to article' label
         citation_link = f"[Link to article]({citation_target})"
-        return f"{main_text} {citation_link}"
+        formatted = f"{main_text} {citation_link}"
+    # Remove any leftover plain '(Link to article)' parentheses that could
+    # appear in the text after replacements.
+    formatted = re.sub(r"\(Link to article\.?\)", "", formatted)
     return formatted
 
 #
@@ -276,20 +279,23 @@ def main():
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
         with interact_col:
-            # Rating control
+            # Rating control without visible label
             rating = st.radio(
-                label=f"Rate {title}", options=["👍", "👎"], horizontal=True,
-                key=f"rating_top_{idx}"
+                label="", options=["👍", "👎"], horizontal=True,
+                key=f"rating_top_{idx}", label_visibility="collapsed"
             )
-            # Feedback input
-            user_feedback = st.text_input(
-                label="Your feedback:", key=f"text_top_{idx}"
-            )
-            # Submit button
-            if st.button("Submit Feedback", key=f"button_top_{idx}"):
-                save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
-                st.session_state.feedback[title] = user_feedback
-                st.success("Thank you for your feedback!")
+            # Arrange feedback input and submit button horizontally
+            input_col, button_col = st.columns([4, 1])
+            with input_col:
+                user_feedback = st.text_input(
+                    label="", key=f"text_top_{idx}",
+                    placeholder="Your feedback..."
+                )
+            with button_col:
+                if st.button("Submit", key=f"button_top_{idx}"):
+                    save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                    st.session_state.feedback[title] = user_feedback
+                    st.success("Thank you for your feedback!")
 
     # Regional overviews
     st.markdown("---")
@@ -308,16 +314,19 @@ def main():
             st.markdown(formatted_desc)
         with interact_col:
             rating = st.radio(
-                label=f"Rate {title}", options=["👍", "👎"], horizontal=True,
-                key=f"rating_region_{idx}"
+                label="", options=["👍", "👎"], horizontal=True,
+                key=f"rating_region_{idx}", label_visibility="collapsed"
             )
-            user_feedback = st.text_input(
-                label="Your feedback:", key=f"text_region_{idx}"
-            )
-            if st.button("Submit Feedback", key=f"button_region_{idx}"):
-                save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
-                st.session_state.feedback[title] = user_feedback
-                st.success("Thank you for your feedback!")
+            input_col, button_col = st.columns([4, 1])
+            with input_col:
+                user_feedback = st.text_input(
+                    label="", key=f"text_region_{idx}", placeholder="Your feedback..."
+                )
+            with button_col:
+                if st.button("Submit", key=f"button_region_{idx}"):
+                    save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                    st.session_state.feedback[title] = user_feedback
+                    st.success("Thank you for your feedback!")
 
     # Display collected feedback for the current edition
     st.markdown("---")
