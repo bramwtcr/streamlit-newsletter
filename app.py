@@ -277,19 +277,22 @@ def main():
     for idx, item in enumerate(content.get("top_developments", [])):
         title = item.get("title", f"Item {idx + 1}")
         desc = item.get("description", "")
-        formatted_desc = format_description(desc)
         # Create two columns: left for article, right for interaction
         # Use a wider article column and narrower interaction column for compact layout
         article_col, interact_col = st.columns([4, 2])
         with article_col:
-            # Render title with link icon if url_source exists, and description
+            # Construct bullet point with title, link icon and tags
             url = item.get("url_source")
-            title_md = f"### {title}"
+            tags = item.get("tags", [])
+            bullet = f"- **{title}**"
             if url:
-                title_md += f" [🔗]({url})"
-            st.markdown(title_md)
-            # Render description without additional link conversion (format_description handles general cases)
-            st.markdown(formatted_desc)
+                bullet += f" [🔗]({url})"
+            if tags:
+                # Display tags as inline code
+                bullet += " " + " ".join([f"`{tag}`" for tag in tags])
+            st.markdown(bullet)
+            # Show description as a short summary below the bullet
+            st.markdown(item.get("description", ""))
         with interact_col:
             # Initialize rating state for this item if not present (0 = no rating)
             rating_key = f"rating_top_{idx}"
@@ -332,16 +335,18 @@ def main():
     for idx, region in enumerate(content.get("regional_overviews", [])):
         title = region.get("title", f"Region {idx + 1}")
         desc = region.get("description", "")
-        formatted_desc = format_description(desc)
         # Two columns: left for region text, right for rating and feedback
         article_col, interact_col = st.columns([4, 2])
         with article_col:
             url = region.get("url_source")
-            title_md = f"### {title}"
+            tags = region.get("tags", [])
+            bullet = f"- **{title}**"
             if url:
-                title_md += f" [🔗]({url})"
-            st.markdown(title_md)
-            st.markdown(formatted_desc)
+                bullet += f" [🔗]({url})"
+            if tags:
+                bullet += " " + " ".join([f"`{tag}`" for tag in tags])
+            st.markdown(bullet)
+            st.markdown(region.get("description", ""))
         with interact_col:
             # Initialize rating state for this region if not present (0 = no rating)
             rating_key = f"rating_region_{idx}"
