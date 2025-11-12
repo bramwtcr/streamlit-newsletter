@@ -1,0 +1,80 @@
+{
+  "title": "Weekly Executive Aviation Briefing",
+  "subtitle": "Global aviation industry updates and analysis",
+  "period": "02-11-2025 to 12-11-2025",
+  "week_number": 46,
+  "year_number": 2025,
+  "audio_files": {
+    "Executive Summary - Week 46 Y25": "Executive Summary.m4a",
+    "Deep Dive - Week 46 Y25": "Deep Dive.m4a"
+  },
+  "top_developments": [
+    {
+      "title": "U.S. Aviation System Under Unprecedented Strain",
+      "description": "FAA mandated escalating flight cuts of up to 10% at major airports amid a government shutdown, causing mass cancellations and chaos.",
+      "url_source": "https://www.reuters.com/business/aerospace-defense/us-may-cut-air-traffic-10-by-friday-without-shutdown-deal-sources-say-2025-11-05/"
+    },
+    {
+      "title": "FAA Grounds Entire MD-11 Fleet After Fatal Crash",
+      "description": "FAA issued an emergency directive grounding all MD-11s after a deadly UPS freighter crash during takeoff.",
+      "url_source": "https://www.reuters.com/world/us/faa-issues-order-prohibiting-md-11-flights-pending-inspection-after-fiery-ups-2025-11-08/"
+    },
+    {
+      "title": "Spirit Airlines Secures Critical Labor Agreements",
+      "description": "Spirit Airlines reached cost-saving deals with pilot and flight attendant unions amid Chapter 11 bankruptcy.",
+      "url_source": "https://www.reuters.com/business/world-at-work/spirit-airlines-reaches-tentative-cost-saving-labor-deals-amid-bankruptcy-2025-11-07/"
+    },
+    {
+      "title": "JFK's New Terminal One Pioneers Pooled Electric GSE",
+      "description": "New York JFK\u2019s new terminal will deploy a common-use, all-electric ground support fleet, a first for North America.",
+      "url_source": "https://www.prnewswire.com/news-releases/the-new-terminal-one-at-jfk-selects-menzies-aviation-and-worldwide-flight-services-to-provide-ground-handling-services-302609943.html"
+    },
+    {
+      "title": "FedEx Accelerates Sustainability Goals with SAF Expansion",
+      "description": "FedEx began using Sustainable Aviation Fuel at major U.S. hubs as part of its 2030 sustainability target.",
+      "url_source": "https://newsroom.fedex.com/newsroom/global-english/fedex-begins-use-of-saf-at-chicago-ohare-and-miami-international-airports"
+    },
+    {
+      "title": "IAG to Equip 500+ Aircraft with Free Starlink Wi-Fi",
+      "description": "IAG and SpaceX reached an agreement to install Starlink broadband across IAG\u2019s fleet for free passenger access.",
+      "url_source": "https://www.satellitetoday.com/mobility/2025/11/06/international-airlines-group-to-implement-starlink-across-5-airlines/"
+    },
+    {
+      "title": "Aircraft Leasing Market Surges Amid Production Delays",
+      "description": "Air Lease Corp posted strong profits and raised outlook ahead of a $7.4B investor-led acquisition.",
+      "url_source": "https://www.reuters.com/business/air-lease-corp-profits-rise-third-quarter-ahead-acquisition-by-investor-led-2025-11-03/"
+    },
+    {
+      "title": "Zero-Emission Aviation Advances with EU-Funded Hydrogen Project",
+      "description": "ZeroAvia secured \u20ac21.4M EU grant to retrofit 15 aircraft and build hydrogen-electric cargo infrastructure in Norway.",
+      "url_source": "https://www.internationalairportreview.com/news/299258/zeroavia-secures-e21-4-million-eu-grant-to-launch-hydrogen-electric-cargo-aircraft-in-norway/"
+    }
+  ],
+  "regional_overviews": [
+    {
+      "title": "North America",
+      "description": "The U.S. faced massive disruptions due to the FAA-mandated flight cuts from the government shutdown, while sustainability and partnership initiatives like JFK\u2019s electric GSE and FedEx\u2019s SAF expansion progressed.",
+      "url_source": "https://www.reuters.com/business/aerospace-defense/us-may-cut-air-traffic-10-by-friday-without-shutdown-deal-sources-say-2025-11-05/"
+    },
+    {
+      "title": "Europe",
+      "description": "Europe advanced hydrogen-electric projects and carbon neutrality efforts while facing risks from drone disruptions and labor disputes.",
+      "url_source": "https://www.internationalairportreview.com/news/299258/zeroavia-secures-e21-4-million-eu-grant-to-launch-hydrogen-electric-cargo-aircraft-in-norway/"
+    },
+    {
+      "title": "Asia-Pacific",
+      "description": "Asia-Pacific recovery accelerated with IndiGo-China Southern partnership, increased leasing, and airport AI-driven innovations.",
+      "url_source": "https://www.flightglobal.com/airlines/indigo-signs-codeshare-partnership-with-china-southern-as-india-china-flights-restart/165264.article"
+    },
+    {
+      "title": "Middle East",
+      "description": "The region saw major growth led by Emirates Group profits, Baghdad Airport modernization, and vertiport initiatives in Abu Dhabi.",
+      "url_source": "https://www.dnata.com/media-centre/emirates-group-hits-new-half-year-profit-record-for-2025-26/"
+    },
+    {
+      "title": "Africa",
+      "description": "Nigeria\u2019s Air Peace secured the first dry-lease aircraft in nearly a decade as the region advanced green airport operations.",
+      "url_source": "https://www.vanguardngr.com/2025/11/air-peace-takes-delivery-of-boeing-737-ng-in-landmark-dry-lease-deal-2/"
+    }
+  ]
+}
