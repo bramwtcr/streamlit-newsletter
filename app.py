@@ -279,7 +279,8 @@ def main():
         desc = item.get("description", "")
         formatted_desc = format_description(desc)
         # Create two columns: left for article, right for interaction
-        article_col, interact_col = st.columns([3, 2])
+        # Use a wider article column and narrower interaction column for compact layout
+        article_col, interact_col = st.columns([4, 2])
         with article_col:
             # Render title and description
             st.markdown(f"### {title}")
@@ -329,7 +330,7 @@ def main():
         desc = region.get("description", "")
         formatted_desc = format_description(desc)
         # Two columns: left for region text, right for rating and feedback
-        article_col, interact_col = st.columns([3, 2])
+        article_col, interact_col = st.columns([4, 2])
         with article_col:
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
