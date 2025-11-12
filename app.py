@@ -289,20 +289,26 @@ def main():
             rating_key = f"rating_top_{idx}"
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = 0
-            # 5-star rating system: display five buttons representing stars
-            star_cols = st.columns(5)
-            for star_idx in range(1, 6):
-                # Determine whether this star should appear filled or empty
-                label = "★" if st.session_state[rating_key] >= star_idx else "☆"
-                # Use a unique key for each star button
-                button_key = f"star_top_{idx}_{star_idx}"
-                with star_cols[star_idx - 1]:
-                    if st.button(label, key=button_key):
-                        current = st.session_state[rating_key]
-                        # If clicking the same star toggles back to neutral (0), otherwise set to that star index
-                        st.session_state[rating_key] = 0 if current == star_idx else star_idx
-            # Retrieve current numeric rating value (0-5)
-            rating = st.session_state[rating_key]
+            # 5-star rating system using radio buttons for compact layout
+            star_labels = [
+                "☆☆☆☆☆",
+                "★☆☆☆☆",
+                "★★☆☆☆",
+                "★★★☆☆",
+                "★★★★☆",
+                "★★★★★",
+            ]
+            current_rating = st.session_state.get(rating_key, 0)
+            selected_label = st.radio(
+                label="",
+                options=star_labels,
+                index=current_rating,
+                horizontal=True,
+                key=f"radio_top_{idx}",
+                label_visibility="collapsed",
+            )
+            rating = star_labels.index(selected_label)
+            st.session_state[rating_key] = rating
             # Arrange feedback input and submit button horizontally
             input_col, button_col = st.columns([4, 1])
             with input_col:
@@ -336,17 +342,26 @@ def main():
             rating_key = f"rating_region_{idx}"
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = 0
-            # 5-star rating system for regional sections
-            star_cols = st.columns(5)
-            for star_idx in range(1, 6):
-                label = "★" if st.session_state[rating_key] >= star_idx else "☆"
-                button_key = f"star_region_{idx}_{star_idx}"
-                with star_cols[star_idx - 1]:
-                    if st.button(label, key=button_key):
-                        current = st.session_state[rating_key]
-                        st.session_state[rating_key] = 0 if current == star_idx else star_idx
-            # Get numeric rating value (0-5)
-            rating = st.session_state[rating_key]
+            # 5-star rating system for regional sections using radio
+            star_labels = [
+                "☆☆☆☆☆",
+                "★☆☆☆☆",
+                "★★☆☆☆",
+                "★★★☆☆",
+                "★★★★☆",
+                "★★★★★",
+            ]
+            current_rating = st.session_state.get(rating_key, 0)
+            selected_label = st.radio(
+                label="",
+                options=star_labels,
+                index=current_rating,
+                horizontal=True,
+                key=f"radio_region_{idx}",
+                label_visibility="collapsed",
+            )
+            rating = star_labels.index(selected_label)
+            st.session_state[rating_key] = rating
             input_col, button_col = st.columns([4, 1])
             with input_col:
                 user_feedback = st.text_input(
