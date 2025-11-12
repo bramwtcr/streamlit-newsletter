@@ -285,12 +285,15 @@ def main():
                 st.session_state[rating_key] = None
             # Up/down toggle buttons: clicking toggles on/off
             btn_col_up, btn_col_down = st.columns(2)
+            # Determine button labels with simple color indicators when selected
+            up_label = "🟢👍" if st.session_state[rating_key] == "👍" else "👍"
+            down_label = "🔴👎" if st.session_state[rating_key] == "👎" else "👎"
             with btn_col_up:
-                if st.button("👍", key=f"up_btn_top_{idx}"):
+                if st.button(up_label, key=f"up_btn_top_{idx}"):
                     current = st.session_state[rating_key]
                     st.session_state[rating_key] = None if current == "👍" else "👍"
             with btn_col_down:
-                if st.button("👎", key=f"down_btn_top_{idx}"):
+                if st.button(down_label, key=f"down_btn_top_{idx}"):
                     current = st.session_state[rating_key]
                     st.session_state[rating_key] = None if current == "👎" else "👎"
             # Retrieve current rating value ("👍", "👎", or None)
@@ -330,12 +333,15 @@ def main():
                 st.session_state[rating_key] = None
             # Up/down toggle buttons for this region
             btn_col_up, btn_col_down = st.columns(2)
+            # Determine colored labels for selection state
+            up_label = "🟢👍" if st.session_state[rating_key] == "👍" else "👍"
+            down_label = "🔴👎" if st.session_state[rating_key] == "👎" else "👎"
             with btn_col_up:
-                if st.button("👍", key=f"up_btn_region_{idx}"):
+                if st.button(up_label, key=f"up_btn_region_{idx}"):
                     current = st.session_state[rating_key]
                     st.session_state[rating_key] = None if current == "👍" else "👍"
             with btn_col_down:
-                if st.button("👎", key=f"down_btn_region_{idx}"):
+                if st.button(down_label, key=f"down_btn_region_{idx}"):
                     current = st.session_state[rating_key]
                     st.session_state[rating_key] = None if current == "👎" else "👎"
             # Get rating value
