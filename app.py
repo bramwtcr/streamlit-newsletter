@@ -7,26 +7,37 @@ import pandas as pd
 
 def format_description(description: str) -> str:
     """
-    Given a description string that may contain a citation (e.g., "Citation: (5: ...)")
-    at the end, return a Markdown-formatted string where the citation portion
-    becomes a clickable link. The citation text itself is used as both the
-    label and the URL target, so clicking the citation will simply display it
-    in the browser. If no citation is found, the original description is
-    returned unmodified. Note: if you wish to link citations to real URLs,
-    update this function accordingly.
+    Format a description string for display. This function replaces any URLs
+    enclosed in parentheses with a Markdown link labeled "Link to article" and
+    converts citation markers into a clickable link using the same label. If a
+    segment of the description begins with "Citation:", the text following
+    the colon is treated as the link target. Note: actual URL values are used
+    when present; for citations without a URL, the citation text becomes the
+    link target.
     """
+    import re
     if not description:
         return ""
-    parts = description.split("Citation:")
+    # Handle inline URLs wrapped in parentheses: replace with 'Link to article'
+
+    def repl_url(match: re.Match) -> str:
+        url = match.group(1)
+        return f"[Link to article]({url})"
+
+    # Replace (http... ) patterns with link text
+    formatted = re.sub(r"\((https?://[^)]+)\)", repl_url, description)
+
+    # Handle trailing citation markers
+    parts = formatted.split("Citation:")
     if len(parts) > 1:
         main_text = parts[0].strip()
-        citation_text = parts[1].strip()
-        # Wrap citation in Markdown link; using the citation itself as target
-        citation_md = f"[Citation]({citation_text})"
-        return f"{main_text} {citation_md}"
-    else:
-        return description
-
+        citation_target = parts[1].strip()
+        # Remove surrounding parentheses if present
+        citation_target = citation_target.lstrip("(").rstrip(")")
+        # Create link using 'Link to article' label
+        citation_link = f"[Link to article]({citation_target})"
+        return f"{main_text} {citation_link}"
+    return formatted
 
 #
 # Streamlit application for Bram's AI Newsletter
@@ -257,27 +268,26 @@ def main():
     for idx, item in enumerate(content.get("top_developments", [])):
         title = item.get("title", f"Item {idx + 1}")
         desc = item.get("description", "")
-        # Render title
-        st.markdown(f"### {title}")
-        # Render description with citation as clickable link
         formatted_desc = format_description(desc)
-        st.markdown(formatted_desc)
-        # Create columns for rating, comment and submit button
-        col_rate, col_input, col_submit = st.columns([1, 4, 1])
-        with col_rate:
+        # Create two columns: left for article, right for interaction
+        article_col, interact_col = st.columns([3, 2])
+        with article_col:
+            # Render title and description
+            st.markdown(f"### {title}")
+            st.markdown(formatted_desc)
+        with interact_col:
+            # Rating control
             rating = st.radio(
-                label=f"Rate {title}", options=["👍", "👎"],
-                horizontal=True, key=f"rating_top_{idx}"
+                label=f"Rate {title}", options=["👍", "👎"], horizontal=True,
+                key=f"rating_top_{idx}"
             )
-        with col_input:
+            # Feedback input
             user_feedback = st.text_input(
-                "Your feedback:", key=f"text_top_{idx}"
+                label="Your feedback:", key=f"text_top_{idx}"
             )
-        with col_submit:
+            # Submit button
             if st.button("Submit Feedback", key=f"button_top_{idx}"):
-                # Save feedback with rating and edition
                 save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
-                # Store in session state for immediate use
                 st.session_state.feedback[title] = user_feedback
                 st.success("Thank you for your feedback!")
 
@@ -290,22 +300,20 @@ def main():
     for idx, region in enumerate(content.get("regional_overviews", [])):
         title = region.get("title", f"Region {idx + 1}")
         desc = region.get("description", "")
-        # Render region title and description in full
-        st.markdown(f"### {title}")
         formatted_desc = format_description(desc)
-        st.markdown(formatted_desc)
-        # Rating and feedback fields
-        col_rate, col_input, col_submit = st.columns([1, 4, 1])
-        with col_rate:
+        # Two columns: left for region text, right for rating and feedback
+        article_col, interact_col = st.columns([3, 2])
+        with article_col:
+            st.markdown(f"### {title}")
+            st.markdown(formatted_desc)
+        with interact_col:
             rating = st.radio(
-                label=f"Rate {title}", options=["👍", "👎"],
-                horizontal=True, key=f"rating_region_{idx}"
+                label=f"Rate {title}", options=["👍", "👎"], horizontal=True,
+                key=f"rating_region_{idx}"
             )
-        with col_input:
             user_feedback = st.text_input(
-                "Your feedback:", key=f"text_region_{idx}"
+                label="Your feedback:", key=f"text_region_{idx}"
             )
-        with col_submit:
             if st.button("Submit Feedback", key=f"button_region_{idx}"):
                 save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
                 st.session_state.feedback[title] = user_feedback
