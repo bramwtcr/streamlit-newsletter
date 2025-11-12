@@ -5,24 +5,6 @@ import sqlite3
 import pandas as pd
 
 
-def load_external_css() -> None:
-    """
-    Inject an external CSS file into the Streamlit app via a <style> tag. This
-    function reads the contents of `styles.css` located alongside this script
-    and writes it into the page using `st.markdown` with HTML allowed. If the
-    file does not exist, no styles are injected. Using an external CSS file
-    allows for consistent styling between the static HTML and the Streamlit
-    application.
-    """
-    css_path = os.path.join(BASE_DIR, "styles.css")
-    if os.path.isfile(css_path):
-        try:
-            with open(css_path, "r", encoding="utf-8") as css_file:
-                css = css_file.read()
-            st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
-        except Exception:
-            # Silently ignore CSS loading errors
-            pass
 
 
 def format_description(description: str) -> str:
@@ -238,11 +220,7 @@ def main():
     # Configure page
     st.set_page_config(page_title="Bram's AI Newsletter", layout="wide")
 
-    # Load external CSS for consistent styling. If a styles.css file exists in
-    # the same directory as this script, its contents will be injected into
-    # the Streamlit app. This enables custom styles (e.g., fonts, dark mode)
-    # defined for the static HTML version to also be applied here.
-    load_external_css()
+    # NOTE: Custom CSS injection has been removed to keep the app lightweight.
     # Determine available content versions and allow the user to choose
     versions = get_available_versions()
     selected_content_file = None
