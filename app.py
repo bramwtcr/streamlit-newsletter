@@ -279,11 +279,22 @@ def main():
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
         with interact_col:
-            # Rating control without visible label
-            rating = st.radio(
-                label="", options=["👍", "👎"], horizontal=True,
-                key=f"rating_top_{idx}", label_visibility="collapsed"
-            )
+            # Initialize rating state for this item if not present
+            rating_key = f"rating_top_{idx}"
+            if rating_key not in st.session_state:
+                st.session_state[rating_key] = None
+            # Up/down toggle buttons: clicking toggles on/off
+            btn_col_up, btn_col_down = st.columns(2)
+            with btn_col_up:
+                if st.button("👍", key=f"up_btn_top_{idx}"):
+                    current = st.session_state[rating_key]
+                    st.session_state[rating_key] = None if current == "👍" else "👍"
+            with btn_col_down:
+                if st.button("👎", key=f"down_btn_top_{idx}"):
+                    current = st.session_state[rating_key]
+                    st.session_state[rating_key] = None if current == "👎" else "👎"
+            # Retrieve current rating value ("👍", "👎", or None)
+            rating = st.session_state[rating_key] or ""
             # Arrange feedback input and submit button horizontally
             input_col, button_col = st.columns([4, 1])
             with input_col:
@@ -313,10 +324,22 @@ def main():
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
         with interact_col:
-            rating = st.radio(
-                label="", options=["👍", "👎"], horizontal=True,
-                key=f"rating_region_{idx}", label_visibility="collapsed"
-            )
+            # Initialize rating state for this region if not present
+            rating_key = f"rating_region_{idx}"
+            if rating_key not in st.session_state:
+                st.session_state[rating_key] = None
+            # Up/down toggle buttons for this region
+            btn_col_up, btn_col_down = st.columns(2)
+            with btn_col_up:
+                if st.button("👍", key=f"up_btn_region_{idx}"):
+                    current = st.session_state[rating_key]
+                    st.session_state[rating_key] = None if current == "👍" else "👍"
+            with btn_col_down:
+                if st.button("👎", key=f"down_btn_region_{idx}"):
+                    current = st.session_state[rating_key]
+                    st.session_state[rating_key] = None if current == "👎" else "👎"
+            # Get rating value
+            rating = st.session_state[rating_key] or ""
             input_col, button_col = st.columns([4, 1])
             with input_col:
                 user_feedback = st.text_input(
