@@ -8,35 +8,50 @@ import pandas as pd
 Streamlit application for Bram's AI Newsletter
 
 This app displays the aviation briefing as an interactive newsletter and allows
-users to provide feedback on each listed item. The text and audio references
-are defined in a dictionary at the top of the script for easy editing. To
-update the briefing or swap out audio files, simply modify the values in the
-`CONTENT` dictionary. Audio files should be placed in the same directory as
-this script when deploying to Streamlit or GitHub Pages using the Streamlit
-service.
+users to provide feedback on each listed item. Newsletter content (titles,
+descriptions, audio file names, etc.) is not hard‑coded in this script. Instead,
+each edition of the newsletter should be saved as a JSON file in the
+`content_versions` directory adjacent to this script. JSON files must follow the
+structure of the provided sample (`week 44.json`) and should be named
+according to the ISO week number (e.g., `week 44.json`). When multiple JSON
+files are present, the most recently modified file is used as the landing
+page, and earlier editions can be selected from the sidebar.
 
-Feedback from users is stored in session state and appended to a CSV file
-(`feedback.csv`) in the working directory. Each feedback entry records the
-item title and the submitted comment. If you prefer another storage format
-or naming convention, feel free to adjust the `save_feedback` function.
+Audio files referenced in the JSON must be present in the same directory as
+`app.py` (or use relative paths if you organise them differently). In the
+`audio_files` mapping of each JSON, the keys act as labels (for example,
+"Executive Summary", "News Update" and "Deep Dive") and the values are the
+actual filenames (e.g., `Executive Summary.m4a`). When the application
+cannot find any JSON file, it displays a placeholder message: "json
+file with articles missing".
+
+Feedback from users is stored persistently in a SQLite database (`feedback.db`).
+Each entry records the newsletter item, the comment, and a timestamp. A
+download button allows you to export all feedback as a CSV file.
 """
 
 
-CONTENT_DIR = "content_versions"
+# Determine base directory of this script so relative paths resolve correctly even
+# when the working directory changes (e.g., when running on Streamlit Cloud).
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONTENT_DIR = os.path.join(BASE_DIR, "content_versions")
 
 
-def get_available_versions() -> list:
+def get_available_versions() -> list[str]:
     """
-    Scan the content_versions directory for JSON files. Returns a list of file
-    names sorted by modification time (most recent first). Creates the
-    directory if it does not exist. The newest file will be treated as the
-    default landing page content.
+    Recursively scan the `content_versions` directory for JSON files. Returns a
+    list of absolute paths to JSON files sorted by modification time (most
+    recent first). If the directory does not exist, it will be created.
     """
     if not os.path.isdir(CONTENT_DIR):
         os.makedirs(CONTENT_DIR, exist_ok=True)
-    files = [f for f in os.listdir(CONTENT_DIR) if f.lower().endswith(".json")]
-    files.sort(key=lambda f: os.path.getmtime(os.path.join(CONTENT_DIR, f)), reverse=True)
-    return files
+    json_paths: list[str] = []
+    for root, _, filenames in os.walk(CONTENT_DIR):
+        for name in filenames:
+            if name.lower().endswith(".json"):
+                json_paths.append(os.path.join(root, name))
+    json_paths.sort(key=lambda p: os.path.getmtime(p), reverse=True)
+    return json_paths
 
 
 def load_content(file_path: str | None = None):
@@ -48,19 +63,24 @@ def load_content(file_path: str | None = None):
     the sample provided as a separate file. To add a new edition, place a
     new JSON file named "week XX.json" into the `content_versions` folder.
     """
-    version_file = None
+    # Determine which JSON file to load: use provided file_path or pick the most
+    # recent file from the available versions. The get_available_versions
+    # function returns absolute paths to JSON files.
+    version_file: str | None = None
     if file_path:
         version_file = file_path
     else:
         versions = get_available_versions()
         if versions:
-            version_file = os.path.join(CONTENT_DIR, versions[0])
+            version_file = versions[0]
     if not version_file or not os.path.isfile(version_file):
         # No JSON content found
         return None
     try:
         with open(version_file, "r", encoding="utf-8") as f:
             user_content = json.load(f)
+        # Attach the base directory of this version for resolving relative audio paths
+        user_content["_base_dir"] = os.path.dirname(version_file)
         return user_content
     except Exception as e:
         st.warning(f"Could not load {version_file}: {e}.")
@@ -108,21 +128,31 @@ def save_feedback(item_title: str, feedback: str, conn: sqlite3.Connection):
     conn.commit()
 
 
-def display_audio(audio_files: dict):
-    """Render audio players in three columns."""
+def display_audio(audio_files: dict, base_dir: str | None = None):
+    """
+    Render audio players in columns. Each audio file path is resolved
+    relative to `base_dir` if provided. Keys of the audio_files dict are
+    used as labels and values are filenames.
+    """
+    if not audio_files:
+        return
     st.markdown("## Listen")
     cols = st.columns(len(audio_files))
     for (title, file), col in zip(audio_files.items(), cols):
         with col:
             st.markdown(f"**{title}**")
-            if os.path.isfile(file):
+            # Determine full path: if the file is not absolute and base_dir is given, join them
+            file_path = file
+            if base_dir and not os.path.isabs(file):
+                file_path = os.path.join(base_dir, file)
+            if os.path.isfile(file_path):
                 # Determine mime type based on extension
-                ext = os.path.splitext(file)[1].lower()
+                ext = os.path.splitext(file_path)[1].lower()
                 mime_type = "audio/mp3" if ext == ".mp3" else "audio/mp4"
-                with open(file, "rb") as af:
+                with open(file_path, "rb") as af:
                     st.audio(af.read(), format=mime_type)
             else:
-                st.warning(f"Audio file '{file}' not found. Upload it to the app directory.")
+                st.warning(f"Audio file '{file_path}' not found. Upload it to the appropriate directory.")
 
 
 def main():
@@ -132,27 +162,21 @@ def main():
     versions = get_available_versions()
     selected_content_file = None
     if versions:
-        # Build a list of display names using the period from each JSON file
-        version_options = []
-        for fname in versions:
-            fpath = os.path.join(CONTENT_DIR, fname)
-            display = fname
-            try:
-                with open(fpath, "r", encoding="utf-8") as vf:
-                    vdata = json.load(vf)
-                display = vdata.get("period", fname)
-            except Exception:
-                pass
-            version_options.append((display, fname))
+        # Build a list of display names using the parent folder of each JSON file
+        version_options: list[tuple[str, str]] = []
+        for path in versions:
+            # Display name uses the immediate directory name (e.g., 'Week 44')
+            dir_name = os.path.basename(os.path.dirname(path)) or os.path.basename(path)
+            version_options.append((dir_name, path))
         # Sidebar selection for available versions
         st.sidebar.markdown("### Previous Editions")
-        labels = [f"{disp}" for disp, _ in version_options]
+        labels = [disp for disp, _ in version_options]
         # default index 0 is latest
         selected_label = st.sidebar.selectbox("Choose an edition to view", labels, index=0)
-        # Find the corresponding file
-        for disp, fn in version_options:
+        # Find the corresponding file path
+        for disp, path in version_options:
             if disp == selected_label:
-                selected_content_file = os.path.join(CONTENT_DIR, fn)
+                selected_content_file = path
                 break
 
     # Load content from the selected file (or default if none)
@@ -173,7 +197,7 @@ def main():
     st.write(f"For the period: {content.get('period', '')}")
 
     # Audio players
-    display_audio(content.get("audio_files", {}))
+    display_audio(content.get("audio_files", {}), base_dir=content.get("_base_dir"))
 
     # Initialize feedback storage in session state
     if "feedback" not in st.session_state:
