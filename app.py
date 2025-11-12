@@ -295,6 +295,10 @@ def main():
             ol {
                 padding-left: 1.5rem;
             }
+            /* Set a subtle page background for readability */
+            body {
+                background-color: #f7f9fb;
+            }
         </style>
         """,
         unsafe_allow_html=True,
@@ -389,10 +393,10 @@ def main():
         st.session_state.feedback = {}
 
     st.markdown("---")
-    st.header("Top Developments")
-    st.write(
-        "This week's top developments illustrate the aviation industry's complex dynamics. "
-        "Below each item you can share your feedback, insights or thoughts."
+    st.markdown("## 1.0 Top Developments")
+    st.markdown(
+        "This week's top developments, ranked by strategic importance, illustrate the aviation industry's complex and often contradictory dynamics. "
+        "Key events span critical areas from ambitious regulatory mandates and significant financial turnarounds to severe operational pressures and new strategic partnerships."
     )
 
     # Display each top development in full with rating and feedback form
@@ -450,9 +454,10 @@ def main():
 
     # Regional overviews
     st.markdown("---")
-    st.header("Regional Overviews")
-    st.write(
-        "Explore the dynamics shaping each region. Click on a region below to read more and provide your feedback."
+    st.markdown("## 2.0 Regional Overviews")
+    st.markdown(
+        "This section provides a more granular analysis of the trends, challenges, and strategic movements shaping the aviation landscape in key geographic markets. "
+        "It offers essential context beyond the global headlines, detailing the specific pressures and opportunities defining each region's trajectory."
     )
     for idx, region in enumerate(content.get("regional_overviews", [])):
         title = region.get("title", f"Region {idx + 1}")
@@ -502,7 +507,7 @@ def main():
 
     # Display collected feedback for the current edition
     st.markdown("---")
-    st.header("Collected Feedback")
+    st.markdown("## Feedback")
     # Retrieve feedback from the database for the selected edition and display it
     try:
         if selected_label:
