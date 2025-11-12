@@ -4,31 +4,27 @@ import os
 import sqlite3
 import pandas as pd
 
-"""
-Streamlit application for Bram's AI Newsletter
 
-This app displays the aviation briefing as an interactive newsletter and allows
-users to provide feedback on each listed item. Newsletter content (titles,
-descriptions, audio file names, etc.) is not hard‑coded in this script. Instead,
-each edition of the newsletter should be saved as a JSON file in the
-`content_versions` directory adjacent to this script. JSON files must follow the
-structure of the provided sample (`week 44.json`) and should be named
-according to the ISO week number (e.g., `week 44.json`). When multiple JSON
-files are present, the most recently modified file is used as the landing
-page, and earlier editions can be selected from the sidebar.
-
-Audio files referenced in the JSON must be present in the same directory as
-`app.py` (or use relative paths if you organise them differently). In the
-`audio_files` mapping of each JSON, the keys act as labels (for example,
-"Executive Summary", "News Update" and "Deep Dive") and the values are the
-actual filenames (e.g., `Executive Summary.m4a`). When the application
-cannot find any JSON file, it displays a placeholder message: "json
-file with articles missing".
-
-Feedback from users is stored persistently in a SQLite database (`feedback.db`).
-Each entry records the newsletter item, the comment, and a timestamp. A
-download button allows you to export all feedback as a CSV file.
-"""
+#
+# Streamlit application for Bram's AI Newsletter
+#
+# Newsletter content is loaded from JSON files placed in the `content_versions` directory.
+# Each JSON file follows the structure of the sample `week 44.json` and contains
+# the page title, subtitle, period, a mapping of audio labels to filenames, a list
+# of top developments, and regional overviews. JSON files should be named
+# according to ISO week number (e.g., `week 44.json`) and reside inside a folder
+# (e.g., `Week 44`) alongside their corresponding audio files. The most
+# recently modified JSON determines the landing page; previous versions are
+# selectable via the sidebar.
+#
+# Audio files must be present in the same folder as their JSON file. The keys of
+# the `audio_files` mapping act as labels (for example, "Executive Summary",
+# "News Update", and "Deep Dive") and the values are the filenames (e.g.,
+# `Executive Summary.m4a`).
+#
+# Feedback from users is stored persistently in a SQLite database (`feedback.db`). Each
+# entry records the newsletter item, the comment, and a timestamp, with an option
+# to download all feedback as a CSV file.
 
 
 # Determine base directory of this script so relative paths resolve correctly even
@@ -171,9 +167,12 @@ def main():
         # Sidebar selection for available versions
         st.sidebar.markdown("### Previous Editions")
         labels = [disp for disp, _ in version_options]
-        # default index 0 is latest
-        selected_label = st.sidebar.selectbox("Choose an edition to view", labels, index=0)
-        # Find the corresponding file path
+        # default index 0 is the most recently modified edition
+        # Use radio buttons instead of a dropdown so editions appear as a list
+        selected_label = st.sidebar.radio(
+            "Choose an edition to view", labels, index=0
+        )
+        # Find the corresponding file path for the selected label
         for disp, path in version_options:
             if disp == selected_label:
                 selected_content_file = path
