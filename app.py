@@ -161,7 +161,7 @@ def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
     return conn
 
 
-def save_feedback(item_title: str, feedback: str, edition: str, rating: str, conn: sqlite3.Connection):
+def save_feedback(item_title: str, feedback: str, edition: str, rating, conn: sqlite3.Connection):
     """
     Persist a feedback entry into the SQLite database. Empty comments are ignored.
 
@@ -174,9 +174,11 @@ def save_feedback(item_title: str, feedback: str, edition: str, rating: str, con
     if not feedback.strip():
         return
     # Insert feedback with edition and rating value
+    # Normalize rating to string; this allows numeric ratings and emoji ratings
+    rating_str = str(rating) if rating is not None else ""
     conn.execute(
         "INSERT INTO feedback (item_title, comment, edition, rating) VALUES (?, ?, ?, ?)",
-        (item_title, feedback.strip(), edition, rating),
+        (item_title, feedback.strip(), edition, rating_str),
     )
     conn.commit()
 
@@ -189,9 +191,13 @@ def display_audio(audio_files: dict, base_dir: str | None = None):
     """
     if not audio_files:
         return
+    # Filter out the 'News Update' audio; only display Executive Summary and Deep Dive
+    filtered_files = {k: v for k, v in audio_files.items() if k.lower() != "news update"}
+    if not filtered_files:
+        return
     st.markdown("## Listen")
-    cols = st.columns(len(audio_files))
-    for (title, file), col in zip(audio_files.items(), cols):
+    cols = st.columns(len(filtered_files))
+    for (title, file), col in zip(filtered_files.items(), cols):
         with col:
             st.markdown(f"**{title}**")
             # Determine full path: if the file is not absolute and base_dir is given, join them
@@ -279,25 +285,24 @@ def main():
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
         with interact_col:
-            # Initialize rating state for this item if not present
+            # Initialize rating state for this item if not present (0 = no rating)
             rating_key = f"rating_top_{idx}"
             if rating_key not in st.session_state:
-                st.session_state[rating_key] = None
-            # Up/down toggle buttons: clicking toggles on/off
-            btn_col_up, btn_col_down = st.columns(2)
-            # Determine button labels with simple color indicators when selected
-            up_label = "🟢👍" if st.session_state[rating_key] == "👍" else "👍"
-            down_label = "🔴👎" if st.session_state[rating_key] == "👎" else "👎"
-            with btn_col_up:
-                if st.button(up_label, key=f"up_btn_top_{idx}"):
-                    current = st.session_state[rating_key]
-                    st.session_state[rating_key] = None if current == "👍" else "👍"
-            with btn_col_down:
-                if st.button(down_label, key=f"down_btn_top_{idx}"):
-                    current = st.session_state[rating_key]
-                    st.session_state[rating_key] = None if current == "👎" else "👎"
-            # Retrieve current rating value ("👍", "👎", or None)
-            rating = st.session_state[rating_key] or ""
+                st.session_state[rating_key] = 0
+            # 5-star rating system: display five buttons representing stars
+            star_cols = st.columns(5)
+            for star_idx in range(1, 6):
+                # Determine whether this star should appear filled or empty
+                label = "★" if st.session_state[rating_key] >= star_idx else "☆"
+                # Use a unique key for each star button
+                button_key = f"star_top_{idx}_{star_idx}"
+                with star_cols[star_idx - 1]:
+                    if st.button(label, key=button_key):
+                        current = st.session_state[rating_key]
+                        # If clicking the same star toggles back to neutral (0), otherwise set to that star index
+                        st.session_state[rating_key] = 0 if current == star_idx else star_idx
+            # Retrieve current numeric rating value (0-5)
+            rating = st.session_state[rating_key]
             # Arrange feedback input and submit button horizontally
             input_col, button_col = st.columns([4, 1])
             with input_col:
@@ -327,25 +332,21 @@ def main():
             st.markdown(f"### {title}")
             st.markdown(formatted_desc)
         with interact_col:
-            # Initialize rating state for this region if not present
+            # Initialize rating state for this region if not present (0 = no rating)
             rating_key = f"rating_region_{idx}"
             if rating_key not in st.session_state:
-                st.session_state[rating_key] = None
-            # Up/down toggle buttons for this region
-            btn_col_up, btn_col_down = st.columns(2)
-            # Determine colored labels for selection state
-            up_label = "🟢👍" if st.session_state[rating_key] == "👍" else "👍"
-            down_label = "🔴👎" if st.session_state[rating_key] == "👎" else "👎"
-            with btn_col_up:
-                if st.button(up_label, key=f"up_btn_region_{idx}"):
-                    current = st.session_state[rating_key]
-                    st.session_state[rating_key] = None if current == "👍" else "👍"
-            with btn_col_down:
-                if st.button(down_label, key=f"down_btn_region_{idx}"):
-                    current = st.session_state[rating_key]
-                    st.session_state[rating_key] = None if current == "👎" else "👎"
-            # Get rating value
-            rating = st.session_state[rating_key] or ""
+                st.session_state[rating_key] = 0
+            # 5-star rating system for regional sections
+            star_cols = st.columns(5)
+            for star_idx in range(1, 6):
+                label = "★" if st.session_state[rating_key] >= star_idx else "☆"
+                button_key = f"star_region_{idx}_{star_idx}"
+                with star_cols[star_idx - 1]:
+                    if st.button(label, key=button_key):
+                        current = st.session_state[rating_key]
+                        st.session_state[rating_key] = 0 if current == star_idx else star_idx
+            # Get numeric rating value (0-5)
+            rating = st.session_state[rating_key]
             input_col, button_col = st.columns([4, 1])
             with input_col:
                 user_feedback = st.text_input(
@@ -375,8 +376,18 @@ def main():
 
     if rows:
         for item_title, rating, comment, ts in rows:
-            # Display rating icon followed by comment and timestamp
-            rating_icon = rating if rating in ("👍", "👎") else ""
+            # Determine display of rating: if numeric, show filled and empty stars
+            rating_icon = ""
+            if isinstance(rating, (int, float)) or (isinstance(rating, str) and rating.isdigit()):
+                try:
+                    r_val = int(rating)
+                except Exception:
+                    r_val = 0
+                r_val = max(0, min(5, r_val))
+                rating_icon = "★" * r_val + "☆" * (5 - r_val)
+            else:
+                # For legacy thumbs ratings, just show the value
+                rating_icon = rating if rating else ""
             st.markdown(f"**{item_title}** {rating_icon} ({ts}): {comment}")
         # Provide a download button for feedback of this edition as CSV, including rating
         df_feedback = pd.DataFrame(rows, columns=["Item", "Rating", "Comment", "Submitted At"])
