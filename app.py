@@ -1,6 +1,8 @@
 import streamlit as st
 import json
 import os
+import sqlite3
+import pandas as pd
 
 """
 Streamlit application for Bram's AI Newsletter
@@ -174,18 +176,45 @@ def load_content():
     return default_content
 
 
-def save_feedback(item_title: str, feedback: str, filename: str = "feedback.csv"):
-    """Append feedback to a CSV file."""
-    # Only save non-empty feedback
+def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
+    """
+    Initialize a SQLite database and return the connection. Creates the feedback
+    table if it does not already exist. This database persists on the local file
+    system, so feedback remains available across sessions (as long as the file
+    system persists, e.g., when running locally or on a server with persistent
+    storage).
+    """
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_title TEXT NOT NULL,
+            comment TEXT NOT NULL,
+            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.commit()
+    return conn
+
+
+def save_feedback(item_title: str, feedback: str, conn: sqlite3.Connection):
+    """
+    Persist a feedback entry into the SQLite database. Empty comments are ignored.
+
+    Parameters:
+        item_title: The title of the item receiving feedback.
+        feedback: The comment provided by the user.
+        conn: An open SQLite connection.
+    """
     if not feedback.strip():
         return
-    header_needed = not os.path.isfile(filename)
-    with open(filename, "a", encoding="utf-8") as f:
-        if header_needed:
-            f.write("item,feedback\n")
-        # Escape newlines and commas in feedback by wrapping in quotes
-        feedback_sanitized = feedback.replace("\n", " ").replace("\r", " ")
-        f.write(f"{item_title},\"{feedback_sanitized}\"\n")
+    conn.execute(
+        "INSERT INTO feedback (item_title, comment) VALUES (?, ?)",
+        (item_title, feedback.strip()),
+    )
+    conn.commit()
 
 
 def display_audio(audio_files: dict):
@@ -209,6 +238,9 @@ def main():
     # Configure page
     st.set_page_config(page_title="Bram's AI Newsletter", layout="wide")
     content = load_content()
+
+    # Initialize database connection for persistent feedback storage
+    conn = init_db()
 
     # Header
     st.title(content["title"])
@@ -239,7 +271,7 @@ def main():
                 user_feedback = st.text_area("Your feedback:", key=feedback_key)
                 submitted = st.form_submit_button("Submit Feedback")
                 if submitted:
-                    save_feedback(item["title"], user_feedback)
+                    save_feedback(item["title"], user_feedback, conn)
                     st.session_state.feedback[item["title"]] = user_feedback
                     st.success("Thank you for your feedback!")
 
@@ -258,16 +290,31 @@ def main():
                 user_feedback = st.text_area("Your feedback:", key=feedback_key)
                 submitted = st.form_submit_button("Submit Feedback")
                 if submitted:
-                    save_feedback(region["title"], user_feedback)
+                    save_feedback(region["title"], user_feedback, conn)
                     st.session_state.feedback[region["title"]] = user_feedback
                     st.success("Thank you for your feedback!")
 
     # Display collected feedback (optional)
     st.markdown("---")
     st.header("Collected Feedback")
-    if st.session_state.feedback:
-        for item_title, feedback in st.session_state.feedback.items():
-            st.markdown(f"**{item_title}**: {feedback}")
+    # Retrieve feedback from the database and display it
+    try:
+        rows = conn.execute("SELECT item_title, comment, submitted_at FROM feedback ORDER BY submitted_at DESC").fetchall()
+    except Exception:
+        rows = []
+
+    if rows:
+        for item_title, comment, ts in rows:
+            st.markdown(f"**{item_title}** ({ts}): {comment}")
+        # Provide a download button for all feedback as CSV
+        df_feedback = pd.DataFrame(rows, columns=["Item", "Comment", "Submitted At"])
+        csv_data = df_feedback.to_csv(index=False)
+        st.download_button(
+            label="Download feedback as CSV",
+            data=csv_data,
+            file_name="feedback.csv",
+            mime="text/csv",
+        )
     else:
         st.info("No feedback submitted yet.")
 
