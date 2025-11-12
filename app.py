@@ -5,6 +5,29 @@ import sqlite3
 import pandas as pd
 
 
+def format_description(description: str) -> str:
+    """
+    Given a description string that may contain a citation (e.g., "Citation: (5: ...)")
+    at the end, return a Markdown-formatted string where the citation portion
+    becomes a clickable link. The citation text itself is used as both the
+    label and the URL target, so clicking the citation will simply display it
+    in the browser. If no citation is found, the original description is
+    returned unmodified. Note: if you wish to link citations to real URLs,
+    update this function accordingly.
+    """
+    if not description:
+        return ""
+    parts = description.split("Citation:")
+    if len(parts) > 1:
+        main_text = parts[0].strip()
+        citation_text = parts[1].strip()
+        # Wrap citation in Markdown link; using the citation itself as target
+        citation_md = f"[Citation]({citation_text})"
+        return f"{main_text} {citation_md}"
+    else:
+        return description
+
+
 #
 # Streamlit application for Bram's AI Newsletter
 #
@@ -102,6 +125,7 @@ def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
             item_title TEXT NOT NULL,
             comment TEXT NOT NULL,
             edition TEXT,
+            rating TEXT,
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
@@ -114,10 +138,16 @@ def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
     except Exception:
         # Column already exists or other issue; ignore
         pass
+    # Ensure rating column exists
+    try:
+        conn.execute("ALTER TABLE feedback ADD COLUMN rating TEXT")
+        conn.commit()
+    except Exception:
+        pass
     return conn
 
 
-def save_feedback(item_title: str, feedback: str, edition: str, conn: sqlite3.Connection):
+def save_feedback(item_title: str, feedback: str, edition: str, rating: str, conn: sqlite3.Connection):
     """
     Persist a feedback entry into the SQLite database. Empty comments are ignored.
 
@@ -129,10 +159,10 @@ def save_feedback(item_title: str, feedback: str, edition: str, conn: sqlite3.Co
     """
     if not feedback.strip():
         return
-    # Insert feedback with edition value
+    # Insert feedback with edition and rating value
     conn.execute(
-        "INSERT INTO feedback (item_title, comment, edition) VALUES (?, ?, ?)",
-        (item_title, feedback.strip(), edition),
+        "INSERT INTO feedback (item_title, comment, edition, rating) VALUES (?, ?, ?, ?)",
+        (item_title, feedback.strip(), edition, rating),
     )
     conn.commit()
 
@@ -223,22 +253,33 @@ def main():
         "Below each item you can share your feedback, insights or thoughts."
     )
 
-    # Display each top development with feedback form
+    # Display each top development in full with rating and feedback form
     for idx, item in enumerate(content.get("top_developments", [])):
         title = item.get("title", f"Item {idx + 1}")
         desc = item.get("description", "")
-        with st.expander(title, expanded=False):
-            st.write(desc)
-            form_key = f"form_top_{idx}"
-            feedback_key = f"feedback_top_{idx}"
-            with st.form(key=form_key):
-                user_feedback = st.text_area("Your feedback:", key=feedback_key)
-                submitted = st.form_submit_button("Submit Feedback")
-                if submitted:
-                    # Pass selected edition label when saving feedback
-                    save_feedback(title, user_feedback, selected_label or "unknown", conn)
-                    st.session_state.feedback[title] = user_feedback
-                    st.success("Thank you for your feedback!")
+        # Render title
+        st.markdown(f"### {title}")
+        # Render description with citation as clickable link
+        formatted_desc = format_description(desc)
+        st.markdown(formatted_desc)
+        # Create columns for rating, comment and submit button
+        col_rate, col_input, col_submit = st.columns([1, 4, 1])
+        with col_rate:
+            rating = st.radio(
+                label=f"Rate {title}", options=["👍", "👎"],
+                horizontal=True, key=f"rating_top_{idx}"
+            )
+        with col_input:
+            user_feedback = st.text_input(
+                "Your feedback:", key=f"text_top_{idx}"
+            )
+        with col_submit:
+            if st.button("Submit Feedback", key=f"button_top_{idx}"):
+                # Save feedback with rating and edition
+                save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                # Store in session state for immediate use
+                st.session_state.feedback[title] = user_feedback
+                st.success("Thank you for your feedback!")
 
     # Regional overviews
     st.markdown("---")
@@ -249,17 +290,26 @@ def main():
     for idx, region in enumerate(content.get("regional_overviews", [])):
         title = region.get("title", f"Region {idx + 1}")
         desc = region.get("description", "")
-        with st.expander(title, expanded=False):
-            st.write(desc)
-            form_key = f"form_region_{idx}"
-            feedback_key = f"feedback_region_{idx}"
-            with st.form(key=form_key):
-                user_feedback = st.text_area("Your feedback:", key=feedback_key)
-                submitted = st.form_submit_button("Submit Feedback")
-                if submitted:
-                    save_feedback(title, user_feedback, selected_label or "unknown", conn)
-                    st.session_state.feedback[title] = user_feedback
-                    st.success("Thank you for your feedback!")
+        # Render region title and description in full
+        st.markdown(f"### {title}")
+        formatted_desc = format_description(desc)
+        st.markdown(formatted_desc)
+        # Rating and feedback fields
+        col_rate, col_input, col_submit = st.columns([1, 4, 1])
+        with col_rate:
+            rating = st.radio(
+                label=f"Rate {title}", options=["👍", "👎"],
+                horizontal=True, key=f"rating_region_{idx}"
+            )
+        with col_input:
+            user_feedback = st.text_input(
+                "Your feedback:", key=f"text_region_{idx}"
+            )
+        with col_submit:
+            if st.button("Submit Feedback", key=f"button_region_{idx}"):
+                save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                st.session_state.feedback[title] = user_feedback
+                st.success("Thank you for your feedback!")
 
     # Display collected feedback for the current edition
     st.markdown("---")
@@ -268,7 +318,7 @@ def main():
     try:
         if selected_label:
             rows = conn.execute(
-                "SELECT item_title, comment, submitted_at FROM feedback WHERE edition = ? ORDER BY submitted_at DESC",
+                "SELECT item_title, rating, comment, submitted_at FROM feedback WHERE edition = ? ORDER BY submitted_at DESC",
                 (selected_label,),
             ).fetchall()
         else:
@@ -278,10 +328,12 @@ def main():
         rows = []
 
     if rows:
-        for item_title, comment, ts in rows:
-            st.markdown(f"**{item_title}** ({ts}): {comment}")
-        # Provide a download button for feedback of this edition as CSV
-        df_feedback = pd.DataFrame(rows, columns=["Item", "Comment", "Submitted At"])
+        for item_title, rating, comment, ts in rows:
+            # Display rating icon followed by comment and timestamp
+            rating_icon = rating if rating in ("👍", "👎") else ""
+            st.markdown(f"**{item_title}** {rating_icon} ({ts}): {comment}")
+        # Provide a download button for feedback of this edition as CSV, including rating
+        df_feedback = pd.DataFrame(rows, columns=["Item", "Rating", "Comment", "Submitted At"])
         csv_data = df_feedback.to_csv(index=False)
         st.download_button(
             label="Download feedback as CSV",
