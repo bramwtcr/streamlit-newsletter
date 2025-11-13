@@ -1,69 +1,29 @@
 import streamlit as st
 import json
 import os
-import sqlite3
 import pandas as pd
+from datetime import datetime
 
 
 
-
-def format_description(description: str) -> str:
-    """
-    Format a description string for display. This function replaces any URLs
-    enclosed in parentheses with a Markdown link labeled "Link to article" and
-    converts citation markers into a clickable link using the same label. If a
-    segment of the description begins with "Citation:", the text following
-    the colon is treated as the link target. Note: actual URL values are used
-    when present; for citations without a URL, the citation text becomes the
-    link target.
-    """
-    import re
-    if not description:
-        return ""
-    # Handle inline URLs wrapped in parentheses: replace with 'Link to article'
-
-    def repl_url(match: re.Match) -> str:
-        url = match.group(1)
-        return f"[Link to article]({url})"
-
-    # Replace (http... ) patterns with link text
-    formatted = re.sub(r"\((https?://[^)]+)\)", repl_url, description)
-
-    # Handle trailing citation markers
-    parts = formatted.split("Citation:")
-    if len(parts) > 1:
-        main_text = parts[0].strip()
-        citation_target = parts[1].strip()
-        # Remove surrounding parentheses if present
-        citation_target = citation_target.lstrip("(").rstrip(")")
-        # Create link using 'Link to article' label
-        citation_link = f"[Link to article]({citation_target})"
-        formatted = f"{main_text} {citation_link}"
-    # Remove any leftover plain '(Link to article)' parentheses that could
-    # appear in the text after replacements.
-    formatted = re.sub(r"\(Link to article\.?\)", "", formatted)
-    return formatted
 
 #
 # Streamlit application for Bram's AI Newsletter
 #
 # Newsletter content is loaded from JSON files placed in the `content_versions` directory.
-# Each JSON file follows the structure of the sample `week 44.json` and contains
-# the page title, subtitle, period, a mapping of audio labels to filenames, a list
-# of top developments, and regional overviews. JSON files should be named
-# according to ISO week number (e.g., `week 44.json`) and reside inside a folder
-# (e.g., `Week 44`) alongside their corresponding audio files. The most
-# recently modified JSON determines the landing page; previous versions are
-# selectable via the sidebar.
+# Each JSON file contains the page title, subtitle, period, a list of top developments,
+# and regional overviews. JSON files should be named according to the week
+# (e.g., `week 44.json`) and reside inside a folder (e.g., `Week 44`) alongside
+# their corresponding audio files. The most recently modified JSON determines the
+# landing page; previous versions are selectable via the sidebar.
 #
-# Audio files must be present in the same folder as their JSON file. The keys of
-# the `audio_files` mapping act as labels (for example, "Executive Summary",
-# "News Update", and "Deep Dive") and the values are the filenames (e.g.,
-# `Executive Summary.m4a`).
+# Audio files must be present in the same folder as their JSON file with fixed names:
+# - "Executive Summary.m4a"
+# - "Deep Dive.m4a"
 #
-# Feedback from users is stored persistently in a SQLite database (`feedback.db`). Each
-# entry records the newsletter item, the comment, and a timestamp, with an option
-# to download all feedback as a CSV file.
+# Feedback from users is stored in a CSV file (`feedback.csv`) within each week's folder.
+# Each entry records the newsletter item, rating, comment, and timestamp. Feedback is
+# separated per week and can be downloaded as a CSV file.
 
 
 # Determine base directory of this script so relative paths resolve correctly even
@@ -122,98 +82,61 @@ def load_content(file_path: str | None = None):
         return None
 
 
-def init_db(db_path: str = "feedback.db") -> sqlite3.Connection:
+def get_feedback_path(week_folder: str) -> str:
     """
-    Initialize a SQLite database and return the connection. Creates the feedback
-    table if it does not already exist. The table includes an additional
-    `edition` column so that feedback can be associated with a particular
-    newsletter edition. If the table exists without this column, it will
-    be added via an ALTER TABLE statement. This database persists on the
-    local file system, so feedback remains available across sessions (as long
-    as the file system persists).
+    Get the path to the feedback CSV file for a specific week folder.
     """
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    # Create table if not exists with edition column
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS feedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_title TEXT NOT NULL,
-            comment TEXT NOT NULL,
-            edition TEXT,
-            rating TEXT,
-            submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-    conn.commit()
-    # Ensure edition column exists (for backward compatibility)
-    try:
-        conn.execute("ALTER TABLE feedback ADD COLUMN edition TEXT")
-        conn.commit()
-    except Exception:
-        # Column already exists or other issue; ignore
-        pass
-    # Ensure rating column exists
-    try:
-        conn.execute("ALTER TABLE feedback ADD COLUMN rating TEXT")
-        conn.commit()
-    except Exception:
-        pass
-    return conn
+    return os.path.join(week_folder, "feedback.csv")
 
 
-def save_feedback(item_title: str, feedback: str, edition: str, rating, conn: sqlite3.Connection):
+def save_feedback(item_title: str, feedback: str, rating: str, week_folder: str):
     """
-    Persist a feedback entry into the SQLite database. Empty comments are ignored.
+    Save feedback to a CSV file in the week's folder. Each week has its own feedback file.
 
     Parameters:
         item_title: The title of the item receiving feedback.
         feedback: The comment provided by the user.
-        edition: Identifier for the newsletter edition (e.g., 'Week 44').
-        conn: An open SQLite connection.
+        rating: The rating (thumbs up/down or other).
+        week_folder: The folder path for the current week.
     """
     if not feedback.strip():
         return
-    # Insert feedback with edition and rating value
-    # Normalize rating to string; this allows numeric ratings and emoji ratings
-    rating_str = str(rating) if rating is not None else ""
-    conn.execute(
-        "INSERT INTO feedback (item_title, comment, edition, rating) VALUES (?, ?, ?, ?)",
-        (item_title, feedback.strip(), edition, rating_str),
-    )
-    conn.commit()
+
+    feedback_path = get_feedback_path(week_folder)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Create new feedback entry
+    new_entry = pd.DataFrame([{
+        "Item": item_title,
+        "Rating": rating if rating else "",
+        "Comment": feedback.strip(),
+        "Submitted At": timestamp
+    }])
+
+    # Append to existing file or create new one
+    if os.path.isfile(feedback_path):
+        existing_df = pd.read_csv(feedback_path)
+        updated_df = pd.concat([existing_df, new_entry], ignore_index=True)
+    else:
+        updated_df = new_entry
+
+    updated_df.to_csv(feedback_path, index=False)
 
 
-def display_audio(audio_files: dict, base_dir: str | None = None):
+def load_feedback(week_folder: str) -> pd.DataFrame:
     """
-    Render audio players in columns. Each audio file path is resolved
-    relative to `base_dir` if provided. Keys of the audio_files dict are
-    used as labels and values are filenames.
+    Load feedback from the CSV file in the week's folder.
+
+    Parameters:
+        week_folder: The folder path for the current week.
+
+    Returns:
+        DataFrame with feedback entries, or empty DataFrame if no feedback exists.
     """
-    if not audio_files:
-        return
-    # Filter out the 'News Update' audio; only display Executive Summary and Deep Dive
-    filtered_files = {k: v for k, v in audio_files.items() if k.lower() != "news update"}
-    if not filtered_files:
-        return
-    st.markdown("## Listen")
-    cols = st.columns(len(filtered_files))
-    for (title, file), col in zip(filtered_files.items(), cols):
-        with col:
-            st.markdown(f"**{title}**")
-            # Determine full path: if the file is not absolute and base_dir is given, join them
-            file_path = file
-            if base_dir and not os.path.isabs(file):
-                file_path = os.path.join(base_dir, file)
-            if os.path.isfile(file_path):
-                # Determine mime type based on extension
-                ext = os.path.splitext(file_path)[1].lower()
-                mime_type = "audio/mp3" if ext == ".mp3" else "audio/mp4"
-                with open(file_path, "rb") as af:
-                    st.audio(af.read(), format=mime_type)
-            else:
-                st.warning(f"Audio file '{file_path}' not found. Upload it to the appropriate directory.")
+    feedback_path = get_feedback_path(week_folder)
+    if os.path.isfile(feedback_path):
+        return pd.read_csv(feedback_path)
+    return pd.DataFrame(columns=["Item", "Rating", "Comment", "Submitted At"])
 
 
 def main():
@@ -331,14 +254,14 @@ def main():
     # Load content from the selected file (or default if none)
     content = load_content(selected_content_file)
 
-    # Initialize database connection for persistent feedback storage
-    conn = init_db()
-
     # If no content JSON is available, show a placeholder message
     if content is None:
         st.title("Bram's AI Newsletter")
         st.write("json file with articles missing")
         return
+
+    # Get the base directory for the current week (for feedback storage)
+    week_folder = content.get("_base_dir")
 
     # Header: use a custom HTML container to apply the aviation-themed styling
     # Compute values outside of the f-string to avoid backslash escapes
@@ -357,36 +280,33 @@ def main():
     )
 
     # Listen section: Display two podcast columns for Executive Summary and Deep Dive.
-    # Prepare audio files: filter out the 'News Update' entry and keep the remaining.
-    audio_map = content.get("audio_files", {})
-    # Remove 'News Update' (case-insensitive) and preserve order
-    filtered_audio = [(k, v) for k, v in audio_map.items() if k.lower() != "news update"]
-    if filtered_audio:
-        # Only take up to the first two entries for Executive Summary and Deep Dive
-        filtered_audio = filtered_audio[:2]
-        st.markdown('<h2>🎧 Listen</h2>', unsafe_allow_html=True)
-        cols = st.columns(len(filtered_audio))
-        for (label, filename), col in zip(filtered_audio, cols):
-            with col:
-                # Show podcast box with title
-                st.markdown(
-                    f'<div class="podcast-box"><div class="podcast-title">{label}</div>',
-                    unsafe_allow_html=True,
-                )
-                # Resolve audio file path relative to the JSON's base directory
-                file_path = filename
-                base_dir = content.get("_base_dir")
-                if base_dir and not os.path.isabs(filename):
-                    file_path = os.path.join(base_dir, filename)
-                # Check if file exists and play audio
-                if os.path.isfile(file_path):
-                    ext = os.path.splitext(file_path)[1].lower()
-                    mime = "audio/mp3" if ext == ".mp3" else "audio/mp4"
-                    with open(file_path, "rb") as af:
-                        st.audio(af.read(), format=mime)
-                else:
-                    st.warning(f"Audio file '{filename}' not found. Please upload it.")
-                st.markdown('</div>', unsafe_allow_html=True)
+    # Audio files always have fixed names in each week folder
+    base_dir = content.get("_base_dir")
+    audio_files = [
+        ("Executive Summary", "Executive Summary.m4a"),
+        ("Deep Dive", "Deep Dive.m4a")
+    ]
+
+    st.markdown('<h2>🎧 Listen</h2>', unsafe_allow_html=True)
+    cols = st.columns(len(audio_files))
+    for (label, filename), col in zip(audio_files, cols):
+        with col:
+            # Show podcast box with title
+            st.markdown(
+                f'<div class="podcast-box"><div class="podcast-title">{label}</div>',
+                unsafe_allow_html=True,
+            )
+            # Resolve audio file path relative to the JSON's base directory
+            file_path = os.path.join(base_dir, filename) if base_dir else filename
+            # Check if file exists and play audio
+            if os.path.isfile(file_path):
+                ext = os.path.splitext(file_path)[1].lower()
+                mime = "audio/mp3" if ext == ".mp3" else "audio/mp4"
+                with open(file_path, "rb") as af:
+                    st.audio(af.read(), format=mime)
+            else:
+                st.warning(f"Audio file '{filename}' not found. Please upload it.")
+            st.markdown('</div>', unsafe_allow_html=True)
 
     # Initialize feedback storage in session state
     if "feedback" not in st.session_state:
@@ -420,12 +340,8 @@ def main():
             # Show description as a short summary below the bullet
             st.markdown(item.get("description", ""))
         with interact_col:
-            # Initialize rating state for this item if not present (0 = no rating)
+            # Initialize rating state for this item if not present
             rating_key = f"rating_top_{idx}"
-            if rating_key not in st.session_state:
-                st.session_state[rating_key] = 0
-            # 5-star rating system using radio buttons for compact layout
-            # Two-option rating: thumbs up / thumbs down with toggle functionality
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = ""
             current = st.session_state[rating_key]
@@ -448,7 +364,7 @@ def main():
                 )
             with button_col:
                 if st.button("Submit", key=f"button_top_{idx}"):
-                    save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                    save_feedback(title, user_feedback, rating, week_folder)
                     st.session_state.feedback[title] = user_feedback
                     st.success("Thank you for your feedback!")
 
@@ -475,12 +391,8 @@ def main():
             st.markdown(bullet)
             st.markdown(region.get("description", ""))
         with interact_col:
-            # Initialize rating state for this region if not present (0 = no rating)
+            # Initialize rating state for this region if not present
             rating_key = f"rating_region_{idx}"
-            if rating_key not in st.session_state:
-                st.session_state[rating_key] = 0
-            # 5-star rating system for regional sections using radio
-            # Two-option rating for regional sections
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = ""
             current = st.session_state[rating_key]
@@ -501,48 +413,29 @@ def main():
                 )
             with button_col:
                 if st.button("Submit", key=f"button_region_{idx}"):
-                    save_feedback(title, user_feedback, selected_label or "unknown", rating, conn)
+                    save_feedback(title, user_feedback, rating, week_folder)
                     st.session_state.feedback[title] = user_feedback
                     st.success("Thank you for your feedback!")
 
     # Display collected feedback for the current edition
     st.markdown("---")
-    st.markdown("## Feedback")
-    # Retrieve feedback from the database for the selected edition and display it
-    try:
-        if selected_label:
-            rows = conn.execute(
-                "SELECT item_title, rating, comment, submitted_at FROM feedback WHERE edition = ? ORDER BY submitted_at DESC",
-                (selected_label,),
-            ).fetchall()
-        else:
-            # No edition selected; return empty list
-            rows = []
-    except Exception:
-        rows = []
+    st.markdown(f"## Feedback for {selected_label or 'Current Edition'}")
 
-    if rows:
-        for item_title, rating, comment, ts in rows:
-            # Determine display of rating: if numeric, show filled and empty stars
-            rating_icon = ""
-            if isinstance(rating, (int, float)) or (isinstance(rating, str) and rating.isdigit()):
-                try:
-                    r_val = int(rating)
-                except Exception:
-                    r_val = 0
-                r_val = max(0, min(5, r_val))
-                rating_icon = "★" * r_val + "☆" * (5 - r_val)
-            else:
-                # For legacy thumbs ratings, just show the value
-                rating_icon = rating if rating else ""
-            st.markdown(f"**{item_title}** {rating_icon} ({ts}): {comment}")
-        # Provide a download button for feedback of this edition as CSV, including rating
-        df_feedback = pd.DataFrame(rows, columns=["Item", "Rating", "Comment", "Submitted At"])
-        csv_data = df_feedback.to_csv(index=False)
+    # Load feedback from the week's folder
+    feedback_df = load_feedback(week_folder)
+
+    if not feedback_df.empty:
+        # Display each feedback entry
+        for _, row in feedback_df.iterrows():
+            rating_icon = row['Rating'] if row['Rating'] else ""
+            st.markdown(f"**{row['Item']}** {rating_icon} ({row['Submitted At']}): {row['Comment']}")
+
+        # Provide a download button for feedback CSV
+        csv_data = feedback_df.to_csv(index=False)
         st.download_button(
             label="Download feedback as CSV",
             data=csv_data,
-            file_name="feedback.csv",
+            file_name=f"feedback_{selected_label or 'current'}.csv",
             mime="text/csv",
         )
     else:
