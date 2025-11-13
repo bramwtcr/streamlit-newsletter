@@ -340,22 +340,29 @@ def main():
             # Show description as a short summary below the bullet
             st.markdown(item.get("description", ""))
         with interact_col:
-            # Initialize rating state for this item if not present
+            # Initialize rating and submission state for this item if not present
             rating_key = f"rating_top_{idx}"
+            submit_key = f"submitted_top_{idx}"
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = ""
+            if submit_key not in st.session_state:
+                st.session_state[submit_key] = False
+
             current = st.session_state[rating_key]
             up_label = "🟢👍" if current == "👍" else "👍"
             down_label = "🔴👎" if current == "👎" else "👎"
             up_col, down_col = st.columns([1, 1])
             with up_col:
                 if st.button(up_label, key=f"up_btn_top_{idx}"):
-                    st.session_state[rating_key] = "" if current == "👍" else "👍"
+                    st.session_state[rating_key] = "👍"
+                    st.rerun()
             with down_col:
                 if st.button(down_label, key=f"down_btn_top_{idx}"):
-                    st.session_state[rating_key] = "" if current == "👎" else "👎"
+                    st.session_state[rating_key] = "👎"
+                    st.rerun()
+
             rating = st.session_state[rating_key]
-            # Arrange feedback input and submit button horizontally
+            # Arrange feedback input and submit checkbox horizontally
             input_col, button_col = st.columns([4, 1])
             with input_col:
                 user_feedback = st.text_input(
@@ -363,10 +370,15 @@ def main():
                     placeholder="Your feedback..."
                 )
             with button_col:
-                if st.button("Submit", key=f"button_top_{idx}"):
-                    save_feedback(title, user_feedback, rating, week_folder)
-                    st.session_state.feedback[title] = user_feedback
-                    st.success("Thank you for your feedback!")
+                # Show green checkmark if already submitted, otherwise white checkbox
+                if st.session_state[submit_key]:
+                    st.markdown("✅", unsafe_allow_html=True)
+                else:
+                    if st.button("☑️", key=f"button_top_{idx}"):
+                        save_feedback(title, user_feedback, rating, week_folder)
+                        st.session_state.feedback[title] = user_feedback
+                        st.session_state[submit_key] = True
+                        st.rerun()
 
     # Regional overviews
     st.markdown("---")
@@ -391,20 +403,27 @@ def main():
             st.markdown(bullet)
             st.markdown(region.get("description", ""))
         with interact_col:
-            # Initialize rating state for this region if not present
+            # Initialize rating and submission state for this region if not present
             rating_key = f"rating_region_{idx}"
+            submit_key = f"submitted_region_{idx}"
             if rating_key not in st.session_state:
                 st.session_state[rating_key] = ""
+            if submit_key not in st.session_state:
+                st.session_state[submit_key] = False
+
             current = st.session_state[rating_key]
             up_label = "🟢👍" if current == "👍" else "👍"
             down_label = "🔴👎" if current == "👎" else "👎"
             up_col, down_col = st.columns(2)
             with up_col:
                 if st.button(up_label, key=f"up_btn_region_{idx}"):
-                    st.session_state[rating_key] = "" if current == "👍" else "👍"
+                    st.session_state[rating_key] = "👍"
+                    st.rerun()
             with down_col:
                 if st.button(down_label, key=f"down_btn_region_{idx}"):
-                    st.session_state[rating_key] = "" if current == "👎" else "👎"
+                    st.session_state[rating_key] = "👎"
+                    st.rerun()
+
             rating = st.session_state[rating_key]
             input_col, button_col = st.columns([4, 1])
             with input_col:
@@ -412,10 +431,15 @@ def main():
                     label="", key=f"text_region_{idx}", placeholder="Your feedback..."
                 )
             with button_col:
-                if st.button("Submit", key=f"button_region_{idx}"):
-                    save_feedback(title, user_feedback, rating, week_folder)
-                    st.session_state.feedback[title] = user_feedback
-                    st.success("Thank you for your feedback!")
+                # Show green checkmark if already submitted, otherwise white checkbox
+                if st.session_state[submit_key]:
+                    st.markdown("✅", unsafe_allow_html=True)
+                else:
+                    if st.button("☑️", key=f"button_region_{idx}"):
+                        save_feedback(title, user_feedback, rating, week_folder)
+                        st.session_state.feedback[title] = user_feedback
+                        st.session_state[submit_key] = True
+                        st.rerun()
 
     # Display collected feedback for the current edition
     st.markdown("---")
