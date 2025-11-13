@@ -143,89 +143,141 @@ def main():
     # Configure page
     st.set_page_config(page_title="Aviation Weekly Briefing", layout="wide")
 
-    # Inject global CSS styles for a clean, modern look. This CSS defines a
-    # centered content container, updated typography, a styled header bar,
-    # section titles, podcast boxes, and paragraph formatting. These styles
-    # follow the design provided by the user. The use of `unsafe_allow_html`
-    # enables the custom CSS to take effect across the page.
+    # Initialize dark mode state (default: light mode)
+    if "dark_mode" not in st.session_state:
+        st.session_state.dark_mode = False
+
+    # Define color themes
+    if st.session_state.dark_mode:
+        # Dark theme colors
+        bg_color = "#1a1a1a"
+        text_color = "#e0e0e0"
+        header_bg = "#2d5a7b"
+        header_text = "#ffffff"
+        header_subtitle = "#b8d4e8"
+        section_color = "#5a9bd5"
+        section_border = "#5a9bd5"
+        podcast_bg = "#2a2a2a"
+        podcast_border = "#444444"
+        podcast_title_color = "#7eb3e0"
+    else:
+        # Light theme colors (soft, easy on eyes)
+        bg_color = "#f9fafb"
+        text_color = "#2c3e50"
+        header_bg = "#004C8C"
+        header_text = "#ffffff"
+        header_subtitle = "#dbe8ff"
+        section_color = "#004C8C"
+        section_border = "#004C8C"
+        podcast_bg = "#f5f8fc"
+        podcast_border = "#cfd8e0"
+        podcast_title_color = "#004C8C"
+
+    # Inject theme-aware CSS styles
     st.markdown(
-        """
+        f"""
         <style>
             /* General body style */
-            .block-container {
+            .block-container {{
                 max-width: 900px;
                 margin: 0 auto;
                 padding-top: 2rem;
-            }
+            }}
 
             /* Clean, modern typography */
-            html, body, [class*="css"] {
+            html, body, [class*="css"] {{
                 font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                 line-height: 1.6;
-                color: #222;
-            }
+                color: {text_color};
+                background-color: {bg_color};
+            }}
+
+            /* Main content area */
+            .main {{
+                background-color: {bg_color};
+            }}
 
             /* Header bar styling */
-            .main-header {
-                background-color: #004C8C;  /* Deep aviation blue */
-                color: white;
+            .main-header {{
+                background-color: {header_bg};
+                color: {header_text};
                 text-align: center;
                 padding: 3rem 1rem;
                 border-radius: 6px;
-            }
+            }}
 
-            .main-header h1 {
+            .main-header h1 {{
                 font-size: 2.5rem;
                 margin-bottom: 0.5rem;
-            }
+                color: {header_text};
+            }}
 
-            .main-header h3 {
+            .main-header h3 {{
                 font-size: 1.2rem;
                 font-weight: normal;
-                color: #dbe8ff;
-            }
+                color: {header_subtitle};
+            }}
 
             /* Section titles */
-            h2 {
-                color: #004C8C;
-                border-bottom: 2px solid #004C8C;
+            h2 {{
+                color: {section_color};
+                border-bottom: 2px solid {section_border};
                 padding-bottom: 0.3rem;
                 margin-top: 2.5rem;
-            }
+            }}
 
             /* Podcast box styling */
-            .podcast-box {
-                background-color: #f5f8fc;
-                border: 1px solid #cfd8e0;
+            .podcast-box {{
+                background-color: {podcast_bg};
+                border: 1px solid {podcast_border};
                 border-radius: 6px;
                 padding: 1.5rem;
                 margin-bottom: 2rem;
-            }
+            }}
 
-            .podcast-title {
+            .podcast-title {{
                 font-weight: 600;
                 font-size: 1.1rem;
-                color: #004C8C;
+                color: {podcast_title_color};
                 margin-bottom: 0.5rem;
-            }
+            }}
 
             /* Article text */
-            p, li {
+            p, li {{
                 font-size: 1.05rem;
                 text-align: justify;
-            }
+                color: {text_color};
+            }}
 
-            ol {
+            ol {{
                 padding-left: 1.5rem;
-            }
-            /* Set a subtle page background for readability */
-            body {
-                background-color: #f7f9fb;
-            }
+            }}
+
+            /* Streamlit elements */
+            .stMarkdown {{
+                color: {text_color};
+            }}
         </style>
         """,
         unsafe_allow_html=True,
     )
+    # Sidebar: Theme toggle
+    st.sidebar.markdown("### 🎨 Theme")
+    theme_col1, theme_col2 = st.sidebar.columns(2)
+    with theme_col1:
+        if st.button("☀️ Light", key="light_mode", use_container_width=True):
+            st.session_state.dark_mode = False
+            st.rerun()
+    with theme_col2:
+        if st.button("🌙 Dark", key="dark_mode", use_container_width=True):
+            st.session_state.dark_mode = True
+            st.rerun()
+
+    # Show current mode indicator
+    current_mode = "🌙 Dark Mode" if st.session_state.dark_mode else "☀️ Light Mode"
+    st.sidebar.markdown(f"**Current:** {current_mode}")
+    st.sidebar.markdown("---")
+
     # Determine available content versions and allow the user to choose
     versions = get_available_versions()
     selected_content_file = None
