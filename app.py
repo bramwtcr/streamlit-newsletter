@@ -265,11 +265,11 @@ def main():
     st.sidebar.markdown("### 🎨 Theme")
     theme_col1, theme_col2 = st.sidebar.columns(2)
     with theme_col1:
-        if st.button("☀️ Light", key="light_mode", use_container_width=True):
+        if st.button("☀️ Light", key="btn_light_mode", use_container_width=True):
             st.session_state.dark_mode = False
             st.rerun()
     with theme_col2:
-        if st.button("🌙 Dark", key="dark_mode", use_container_width=True):
+        if st.button("🌙 Dark", key="btn_dark_mode", use_container_width=True):
             st.session_state.dark_mode = True
             st.rerun()
 
